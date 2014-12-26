@@ -1,13 +1,13 @@
 # Site settings
-title:       Pixyll
-email:       your_email@example.com
-author:      John Otander
-description: "A simple, beautiful theme for Jekyll that emphasizes content rather than aesthetic fluff."
+title:       pedrocoelho.pt
+email:       contact@pedrocoelho.pt
+author:      Pedro Coelho
+description: "Personal mumblings and rants"
 baseurl:     ""
-url:         "http://pixyll.com"
+url:         "http://pedrocoelho.pt"
 
 # Google analytics
-google_analytics:
+google_analytics: UA-29775906-1
 
 # Optional features
 animated:           false
@@ -16,8 +16,8 @@ show_post_footers:  false
 
 # Social icons
 show_social_icons: false
-github_username:
-twitter_username:
+github_username: punnie
+twitter_username: punnie
 google_plus_id:
 linkedin_username:
 bitcoin_url:
@@ -30,3 +30,7 @@ permalink:    pretty
 paginate:     3
 sass:
   compressed: true
+
+# Exclusions
+exclude:
+  - vendor
