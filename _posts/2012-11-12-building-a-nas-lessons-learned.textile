@@ -1,0 +1,87 @@
+---
+layout: post
+title: "Building a NAS, lessons learned"
+summary: "Write-up about how to build a custom SOHO NAS."
+category: english
+tags: []
+---
+
+Last summer a friend of mine asked me about a NAS(Network Attached Storage) device. What he wanted was something simple to plug, play and forget. He was looking at a "LaCie Network Space 2":http://www.lacie.com/products/product.htm?id=10451, which is not bad at all.
+
+I, however, can't just fire and forget when it comes down to IT equipment, so I went on investigating a NAS(Network Attached Storage) device that would fit to my likings.
+
+h2. The pre-existing condition
+
+When I began this project I was the proud owner of three fine Samsung Spinpoint 500GB hard drives. I had them plugged into my workstation in a RAID5 configuration. It seemed a great idea at the time, but it turned out to be not that great: it presented a clear speed penalty, and it became cumbersome to use the space to provide backups and shared storage to the rest of the people living with me. I had to boot into Linux for the shares to become available. Besides that, I was growing tired of reading reports of RAID5 arrays suddenly failing.
+
+It seemed to me as too much hardware going to waste if I just went with the LaCie purchase. Also, I grew found of the redundancy and fake security feeling that the RAID5 configuration left me.
+
+h2. The search
+
+I started by looking at "Synology":http://www.synology.com and "QNAP":http://www.qnap.com products, which have both a great offer in 2 bay NAS(Network Attached Storage) enclosures.
+
+Unfortunately, enclosures with more than 2 bays were prohibitively expensive. The "Synology DS412+":http://www.amazon.co.uk/gp/product/B007E8DMG0 model alone costs about £510 (about €640 at this time). The "QNAP TS-412":http://www.amazon.co.uk/QNAP-TS-412-Marvell-1-2GHz-built-/dp/B004LOCFUY model is less expensive at £256, but for that kind of money, I thought I could do something that would better suit my needs.
+
+There was also the issue with proprietary interfaces and parts. While aiding my friend with his research that ended on the LaCie model, I came across many product pages that advertised their own software to deal with their NAS(Network Attached Storage) product. This was not something I'd want. I'd rather have a text based shell that allowed me to do anything, anywhere than having to install custom made software with flaky support and uncertain updates, that only worked on certain OSes, like Windows, for example.
+
+And so, I decided to build my own NAS(Network Attached Storage) enclosure.
+
+h2. The drawbacks
+
+Building a computer for something as specific as a NAS(Network Attached Storage) may seem rather pointless, especially when there's so much offer abound for devices specifically designed for the task.
+
+A computer is pretty much general purpose hardware. It is not optimized to perform certain specific tasks, as NAS(Network Attached Storage) enclosures are. Therefore, it will draw more power than a regular enclosure. While one of my requirements was obtaining the lowest power consumption possible, I knew from the start that competing with a regular enclosure in this field was pointless.
+
+Also, I found out it would be impossible for such a build to fit in a tight clean box as most NAS(Network Attached Storage) enclosures are. It would certainly end up being bulkier.
+
+Finally, as with all custom builds, it would require an extra effort to configure the system.
+
+h2. The requirements
+
+As a list:
+
+# >= 3 disks support
+# Low power consumption
+# Known protocol (CIFS(Common Internet File System), NFS(Network File System), AFS(Andrew File System)) support
+# Serviceable and frequently updated software
+# Extensible feature set
+# No extra software needed to use and configure the NAS(Network Attached Storage) beyond the basic tools and utilities regular OSes provide
+
+The rundown on these requirements is quite trivial: it should support at least all my drives, it must not draw that much power, it should share using known protocols, it's software development must be pretty much alive, or at least it must be serviceable by me, and it must allow me to extend it (for example, install a torrent client, or another file sharing service).
+
+h2. The hardware
+
+I drew a budget on the "QNAP":http://www.qnap.com enclosure. If my build should ever cost more than that, then it would just not be worth it. I set it a little lower, actually: about €250.
+
+I started by searching hardware that had low power requirements, and I found nothing I could use. Arduinos and Raspberry PIs either aren't powerful enough to handle disks or lack the interfaces to do so, and most ARM(Advanced RISC Machines) boards are quite expensive on their own. So I upped my ante to something using the common x86 architecture.
+
+In the x86 section, I decided to go with a standard Micro-ITX board: the "ZOTAC Fusion 350-A-E":http://www.zotacusa.com/zotac-fusion-itx-wifi-fusion350-a-e.html. It offers a combination of features almost perfect for the job: 4 SATA(Serial Advanced Technology Attachment) III ports, 8GB of RAM(Random Access Memory) limit and the lowest score on power consumption on most reviews with around 25W when idle. Plus, it runs on passive cooling, making it silent.
+
+The board had most stuff built-in, such as the graphics card, so all I needed was a box and RAM(Random Access Memory). The Zotac uses DDR2-800 in order to consume less power, and those are still cheap, fortunately, so I went for the full 8 Gig.
+
+As for the box, I set my eyes on the "Lian-Li PC-Q25":http://www.lian-li.com/v2/en/product/product06.php?pr_index=584&cl_index=1&sc_index=25&ss_index=67&g=f. I admit that I may have gone a little over the line on this choice, even taking into account I purchased the box for way less than its list price. However, it did fit the budget, and looks fantastic. Besides that, the fan configuration allows for good airflow in a very compact box, cooling both the disks and the board which is fitted with passive cooling only, hopefully stretching their lifespans.
+
+I picked up the rest of the hardware from spares I had laying around.
+
+h2. The software
+
+I did a fair amount of research in NAS(Network Attached Storage) software while searching or hardware. I came across "OpenFiler":http://www.openfiler.com, "NAS4Free":http://www.nas4free.org and "FreeNAS":http://www.freenas.org. I've decided for the latter.
+
+FreeNAS is a stripped down version of FreeBSD. It supports UFS(Unix File System), but what really makes it worth is the ZFS support. ZFS is a file system designed by Oracle that features, between others, data integrity verification against data corruption modes, support for high storage capacities, integration of the concepts of file system and volume management, snapshots and copy-on-write clones, continuous integrity checking and automatic repair, RAID-Z and native NFSv4 ACLs.
+
+Drawbacks include the insane requirement for RAM most features have. According to some ZFS blogs, one should have 1 Gig of RAM per TB(Terabyte) of storage, just for the cache to work properly. Besides that, when using features like data deduplication the need for RAM(Random Access Memory) goes through the roof.
+
+Overall, it offered the best feature set with a simple interface and console access so you can do whatever you please without the software getting in your way. The volume manager was quite nice as it enabled me to clearly separate between shared storage and my own private stuff. Support for the Windows ACL also was a great plus, and creating CIFS(Common Internet File System) or NFS(Network File System) shares is a breeze.
+
+Data scrubbing prevents your data from silently corrupting, which is something I didn't have before, even with the RAID5 setup. Weekly scrubs are performed in order to check data consistency and warn of possible faults. This should keep my data safe, and at least warn me when something is about to go wrong.
+
+ZFS snapshots deserve a whole paragraph of their own. A snapshot behaves like a save point in your volume/disk/dataset: you may revert any changes or deletions you do afterwards (keep in mind _additions_ will also be reverted). The good thing about ZFS snapshots is that they are _instantaneous_ and they practically don't fill any room. This is due to the copy-on-write mechanism that's at the core of ZFS. In a general way, the data itself is not copied, only the FS(File System) base pointer that references the root of such data. Any further changes are reflected in the copied tree. Therefore, snapshots are very quick to produce and span through a trivial ammount of disk space. Due to this mechanism, however, any data you delete after a snapshot will not earn you any disk space while the snapshot referencing the deleted data exists.
+
+h2. The verdict
+
+I began this project as a hobby. I'm ending it now wondering how come I didn't do this before. Seriously: having an OS(Operating System) agnostic, ubiquitous file system on your network is extremely handy. You may operate on your data everywhere.
+
+My build holds currently 3 disks in a RAIDZ configuration. Case-wise, it has room for 5 more disks. SATA slot-wise it has room for 1 more. With a PCI-e expansion card, perhaps even 2 or 4 more. While it lacks some features a "Synology DS412+":http://www.amazon.co.uk/gp/product/B007E8DMG0 may have, such as a redundant network card capable of LACP(Link Aggregation Control Protocol), it compensates with a industry leading FS(File System), disk capacity and cost of purchase. Also, if I ever get tired of using this build as a NAS(Network Attached Storage) device, I can always start using it like a regular computer.
+
+While I won't say that building a custom NAS(Network Attached Storage) should be for everyone, I will say that getting one, even a pre-built, is a particular investment that will significantly improve your quality of life.
+

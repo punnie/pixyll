@@ -1,0 +1,293 @@
+---
+layout: post
+title: "Digging into Chef, part 1: core concepts"
+summary: "The basic concepts regarding Chef, a fantastic albeit somewhat complex automation solution"
+category: english
+tags: []
+---
+
+Chef is tricky, but it's definitely worth to check out if you manage any amount of servers. I find myself comparing it to the likes of _vim_ -- huge learning curve yielding great benefits.
+
+There's a lot of material you are _required_ to know beforehand, and then some. Then, you need to grasp a lot of concepts regarding chef itself, and how it operates. Finally, you'll have to learn about the countless tools that make your journey with Chef more productive.
+
+This is my attempt to write a primer on Chef. Hopefully it will be more digestible than the Chef docs, and easier to understand. It will also necessarily leave some things out.
+
+I am doing this in preparation for a talk about Chef I'll be giving at "this year's edition of Codebits":https://codebits.eu/intra/s/proposal/497.
+
+
+h2. The big picture
+
+Chef automates the task of server _configuration_ for you -- which means it will only spit pre-defined commands to a given server, and it will only do what you tell it to. It won't magically set up your email server with a couple of lines: you'll still have to know how to properly do it, and express the whole process in Chef's language, no less.
+
+So what's the advantage, here?
+
+You'll end up with a fully documented server configuration, that will easily be replicable to other servers. In other words, by reading your _recipes_, you'll have the big picture of precisely what changes. Also, should you need to move your server elsewhere or replicate the configuration over to other servers, you won't ever have to repeat yourself. This eliminates mistakes cased by repetition, and a metric ton of palpable tedium.
+
+Also, Chef should be interoperable. Its core is engineered so it runs at least on Ubuntu and CentOS, so if you need to go from one platform to another, there's probably little or no work to be done.
+
+Then why simply not use a bash script?
+
+This is a matter of opinion, really. It's similar to the ever going debate of using frameworks _vs._ not. Chef provides you with a proven mechanism that applies your configurations backed up by a vibrant community of expert system operators. Its code and practices reflect a lot of years of experience by those who contribute to it, and will allow you to skip some pitfalls that are bound to occur. I encourage anyone who reads this and experiments with Chef to try to mimic your recipes with a bash script, alongside. If you find that going with the later makes you more productive, then by all means, skip Chef altogether.
+
+So now you know what Chef is. Let's see how it works.
+
+
+h2. Chef's architecture
+
+Chef has two distinct modes of operation: using a server dedicated to Chef, and not using one, which is named _solo_. Let's skip _solo_ for now, and stick to how Chef was firstly designed to work. We'll get to _solo_ later.
+
+There are three types of actors in this play: the Chef server, the Operator workstation, and the target node(s) to be configured.
+
+h3. The Chef server
+
+The server, henceforth called _chef-server_, will hold all data necessary to apply configurations. If you're a developer, think of it as your build server, holding out all your code prior to release. There you will store all configurations to be applied, all data to support those configurations, information about the node(s) you'll be configuring, possibly descriptions about the types of node you'll need configurations for, and so forth.
+
+h3. The Operator's workstation
+
+This is where the Operator -- formerly known as _you_ -- will issue commands to the _chef-server_ -- formerly known as the act of _operating_. It will also be where the Operator develops _recipes_, which are Chef's _configuration scripts_, sort to speak. When these _recipes_ are ready to be deployed, they will be uploaded to the _chef-server_.
+
+The Operator in it's workstation interacts with the _chef-server_ by using Chef's tool of choice: the _knife_. Seen that the _chef-server_ exposes an HTTP API, _knife_ provides a command line interface to operate that API.
+
+h3. The target node(s)
+
+All nodes that Chef configure are registered (or register themselves) in the _chef-server_. The later will then tell them what they need to do to guarantee that they are in the state you want them to be -- what configurations need to be applied, and so forth. Nodes poll the _chef-server_ every now and then to see if there are any changes to their configurations, applying them.
+
+That is why you need all your information in one place. When you're managing 50+ heterogeneous nodes you won't have to keep mental notes on who's who. Nodes will know their _roles_, and every change you make that affects them will be performed to the correct targets.
+
+
+h2. Proper nomenclature
+
+We've seen how Chef is organized, and there were a ton of buzzwords flying around. Time to see what they are.
+
+h3. Recipes
+
+The running part of your configuration. In a _recipe_, you'll _declaratively_ tell chef what he needs to do. Think of this as a glorified bash script, written in a higher level abstraction -- because that's what it is.
+
+{% highlight ruby linenos %}
+package 'htop' do
+  action :install
+end
+
+template '/etc/motd' do
+  source 'motd.erb'
+  action :create
+end
+{% endhighlight %}
+
+Take a look at this example. Ruby programmers will immediately recognize this as Ruby code. They're right - Chef's DSL(Domain Specific Language) uses pure Ruby syntax.
+
+What this example _recipe_ does is firstly asking the target _node_ to install the package named "htop", and then to create the file at "/etc/motd" using as basis the template located in the templates directory named "motd.erb".
+
+Never mind the inner workings of the template _resource_ right now, we'll get to that later. For now, focus on the word _resource_.
+
+h3. Resources
+
+Resources are the basic building blocks of all your recipes. In the example above, there are two resources being called: the package resource, and the template resource. Those are the lines 1 and 5. Everything between the _do_ and _end_ are that resource's attributes. They have a similar name to _node attributes_ and _role attributes_, but they're not quite the same.
+
+A resource represents an action Chef is going to perform. It's tied to a lower level implementation of said action called a _provider_, which we will get to _way_ later. Don't worry about those yet, just know them by the name. For now, assume resources perform magic to run the action they're supposed to run.
+
+One thing that should be noted about resources, and by extension recipes, and one of Chef's greatest triumphs, is the notion of resource _idempotence_. All resources should be _idempotent_. What this means is that no matter how many times that a recipe is run, or applied, the end result should _always_ be the same. So for instance, if you run that recipe 1 or 99 times, you'll always end up with the target node in the exact same state: with the package "htop" installed and with the "/etc/motd" file as it states on the "motd.erb" template file. This notion is extremely important as it guarantees that you'll end up with your server in a state you _know_, rather than in a state you _suppose it is_.
+
+h3. Cookbooks
+
+Chef cookbooks are the analogous to applications, in the development world. Each cookbook contains a set of recipes, files, templates and definitions relative to the function it is expected to perform.
+
+They are both independent and interchangeable, thus making possible sharing configuration knowledge between the community. They are also self-contained, meaning a cookbook by itself shouldn't need anything more to operate, save dependencies on other cookbooks.
+
+Also, like all computer code, Cookbooks may be used as "applications" or "libraries". Application cookbooks are tipically run, leaving the target node(s) in a state defined by their actions. Library cookbooks, however, are not tipically run, but provide other cookbooks with resources.
+
+This may be confusing now, but remember that resources have an underlying implementation (the so called _providers_). Therefore, it makes sense to be able to re-use resources, just as it makes sense to re-use functions implemented in libraries that you import into your application.
+
+A good example to differentiate the two is taking a look into two existing cookbooks: the "PostgreSQL cookbook":https://github.com/hw-cookbooks/postgresql, and the "Database cookbook":https://github.com/opscode-cookbooks/database.
+
+Running the PostgreSQL cookbook installs and configures you the PostgreSQL server by default, whereas running the Database cookbook does nothing.
+
+However, if you include the Database cookbook into one of your own, you'll be then able to use the `postgresql_database` and `postgresql_database_user` resources (among others), that create databases and database users for you respectively. Pretty much like including functions or methods from other libraries. See the next code sample.
+
+{% highlight ruby linenos %}
+# Assign a hash with some variables, plain old ruby code
+postgresql_connection_info = {
+  :host     => '127.0.0.1',
+  :port     => 5432,
+  :username => 'postgres',
+  :password => 'secret'
+}
+
+# Create the database 'foo'
+postgresql_database 'foo' do
+  connection postgresql_connection_info
+  action     :create
+end
+
+# Create the user 'bar'
+postgresql_database_user 'bar' do
+  connection postgresql_connection_info
+  password   'super_secret'
+  action     :create
+end
+{% endhighlight %}
+
+Just a quick side-note: don't store your passwords like this! We'll see a proper way of handling this later on.
+
+h3. Nodes
+
+Nodes are the target systems that will apply your recipes. Each node has a _runlist_ -- a list of recipes to be applied. That _runlist_ may be implicit or explicit (don't despair, read on). You may explicitly tell _chef-server_ what's the _runlist_ for a certain node, or it may be implicitly compiled from other sources, or both. We'll get right on to that, don't worry.
+
+h3. Roles
+
+Imagine you're configuring 50 developer boxes in your company. Every box looks the same, and it is the same. Now you'll just have to go through the tedious task of assigning the very same _runlist_ to every one of the 50 boxes, and changing every _runlist_ everytime you feel like changing something.
+
+Fortunately, the _roles_ mechanism was created to fight cases just like this. You may tell Chef that each one of those machines has the _role_ "dev-box" and then assign a single _runlist_ to the "dev-box" role. That way, when you change the _runlist_ for the _role_, every _node_ in that group will be affected.
+
+When you add a _role_ to a _runlist_, you're implicitly adding a set of _recipes_ to that _runlist_. You can mix _roles_ and _recipes_ in a _runlist_, should you need a bit more customization.
+
+h3. Attributes
+
+Recipes are immensely flexible, but they should also be re-usable. There are times that the only difference between the configuration of two nodes is a name, or a certain value, so it doesn't really make much sense duplicating recipes to achieve this effect.
+
+For those cases, there are attributes. Those work as variables that you can pass along to recipes. You may use them throughout the recipe to provide extra flexibility when re-using it.
+
+Attributes may be defined in a lot of places: role definitions, cookbooks, recipies. Even nodes themselves automatically populate a small set of nodes with local information through a Chef service called Ohai. This operates automatically and handles you some information about the node such as the platform, FQDN, and so on.
+
+Due to the high possibility of clashing between attributes, there is a strict and complex hierarchy that is followed when calculating the final value of an attribute. Rule of thumb is the place that affects the less nodes wins, thus ordering the attribute types you already know: cookbook, recipe, role, node (thorugh Ohai).
+
+There is also a distiction between default attributes, normal attribues, overriden attributes and forced overriden attributes, providing you with more control over what you want applied, but turning the hierarchy an authentic mess. There is no real difference between those save from their position in the hierarchy, which is the order I provided earlier.
+
+Anyway, this shouldn't really be much of a concern to you, and it looks scarier than it actually is. You'll rarely need a "forced override", and as soon as we get to building recipes you'll see where everything falls in. For more information, though, visit "the official Chef documentation":http://docs.opscode.com/ohai.html#attribute-precedence.
+
+Now let's apply some attributes to the database recipe we saw above.
+
+{% highlight ruby linenos %}
+# Assign a hash with some variables, plain old ruby code
+postgresql_connection_info = {
+  :host     => node[:postgresql][:host],
+  :port     => node[:postgresql][:port],
+  :username => node[:postgresql][:user],
+  :password => node[:postgresql][:password]
+}
+
+# Create the database 'foo' (defined in our cookbook's attributes)
+postgresql_database node[:application][:database][:name] do
+  connection  postgresql_connection_info
+  action      :create
+end
+
+# Create the user 'bar' (defined in our cookbook's attributes)
+postgresql_database_user node[:application][:database][:user][:name] do
+  connection  postgresql_connection_info
+  password    node[:application][:database][:user][:password]
+  action      :create
+end
+{% endhighlight %}
+
+Now you may feed different combinations of attributes in order to re-use the recipe in other places or nodes just by changing your attributes file, present in your cookbook. We'll explore where everything fits later, but here's an example of such a file. This sets the default attributes for a cookbook.
+
+{% highlight ruby linenos %}
+default[:postgresql] = {
+  :host     => '127.0.0.1',
+  :post     => 5432,
+  :username => 'postgres',
+  :password => 'secret'
+}
+
+default[:application] = {
+  :database => {
+    :name => 'foo',
+    :user => {
+      :name => 'bar',
+      :password => 'super_secret'
+    }
+  }
+}
+{% endhighlight %}
+
+By detaching data from your code, everything gets cleaner.
+
+h3. Data bags
+
+This is the last concept we will explore before attempting to produce a recipe. It's also somewhat an important one.
+
+Let's begin by exploring our current situation, regarding the database cookbook: we have two files -- a recipe, containing our actions, and a default attributes file, containing our attributes. Now remember what was said previously about cookbooks: they are meant to be reusable, and hopefully shared, either among the whole community, or between company colleagues.
+
+It doesn't sit very well that some sensitive passwords reside in a file we're about to send the world, let that it is stored in a version controlled environment.
+
+That's where data bags come in. Those are nothing but JSON data stored in the Chef server itself. When the recipe is run, if a data bag is requested, the chef-server is queried for the result. The chef-server thus becomes a database for attributes, queriable given certain parameters.
+
+This opens the door to a lot of flexibility: you may customize cookbooks given the node's name, location or other information you may gather. Even by role.
+
+Databags also open up the possibility for a node to send back data to the chef-server, that may be used by other nodes.
+
+Due to this being extensively used to store sensitive data, such as passwords, keys and certificates, there are two kinds of data bags: encrypted and, well, not ecrypted. The latter stores all information encoded with a particular key that you own (and you should store in a very safe place), so that not even the chef-server knows what's there. To reveal the data, the node must have access to said key. You may use different keys to cipher different data bags.
+
+The big downside is that you must explicitly tell the people that will use your cookbooks to set up the needed databags beforehand, or else Chef will fail with a nasty and draconic 404 error mid-run. Also, data bag support is very limited when using Chef _solo_, particularly the ability to query the server with specific parameters (e.g. find me all users that should be created in the nodes located in Amazon's us-virginia datacenter).
+
+So let's take a look at how our recipe would look using databags. We'll use unencrypted for simplicity's sake.
+
+Firstly, this is how our data bag would look, stored in the server. Again, we'll see how this all fits together in the next part.
+
+{% highlight javascript linenos %}
+{
+  "id": "secrets", // the name of the data bag is always the same as its id
+  "postgresql" : {
+    "password": "secret"
+  },
+  "application" : {
+    "database": {
+      "user": {
+        "password": "super_secret"
+      }
+    }
+  }
+}
+{% endhighlight %}
+
+The nesting is a bit ugly, but we won't worry with that for now, so long as we don't break the naming given before. Now, for the changes in the recipe:
+
+{% highlight ruby linenos %}
+# Fetch the 'secrets' databag, where our passwords are stored
+secrets = data_bag('secrets')
+
+# Assign a hash with some variables, this is possible with Chef
+postgresql_connection_info = {
+  :host     => node[:postgresql][:host],
+  :port     => node[:postgresql][:port],
+  :username => node[:postgresql][:user],
+  :password => secrets[:postgresql][:password] # see here
+}
+
+# Create the database 'foo' (defined in our cookbook's attributes)
+postgresql_database node[:application][:database][:name] do
+  connection  postgresql_connection_info
+  action      :create
+end
+
+# Create the user 'bar' (defined in our cookbook's attributes)
+postgresql_database_user node[:application][:database][:user][:name] do
+  connection  postgresql_connection_info
+  password    secrets[:application][:database][:user][:password] # see here
+  action      :create
+end
+{% endhighlight %}
+
+Notice lines 2, where we fetch our databag, and lines 9 and 21, where we use the contents of our data bag.
+
+Changes to the attributes file would also become trivial: just remove the default passwords there.
+
+{% highlight ruby linenos table %}
+default[:postgresql] = {
+  :host     => '127.0.0.1',
+  :post     => 5432,
+  :username => 'postgres'
+}
+
+default[:application] = {
+  :database => {
+    :name => 'foo',
+    :user => {
+      :name => 'bar'
+    }
+  }
+}
+{% endhighlight %}
+
+That's all for part I. Next up, we write a recipe from scratch.

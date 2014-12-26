@@ -1,0 +1,108 @@
+---
+layout: post
+title: "Digging into Chef, part 2: creating a cookbook"
+description: ""
+category: english
+tags: []
+published: false
+---
+
+Now that we've got the basic concepts to build something, let's start cooking! Let's build a cookbook using nothing but the raw tools that Chef offers us, following the Chef way.
+
+Tools you'll need for this:
+* Git
+* Chef and Knife
+* Your brain
+
+I'm assuming there's already a chef-server ready somewhere. If there's not, you may want to set up one yourself (it's pretty easy to do if only for testing purposes), or you may want to use Hosted Chef, which is free to use for up to 5 nodes.
+
+Setting up Knife is also very well covered (and above all, straight forward) by the Chef documentation. Follow the steps "here":http://docs.opscode.com/install_workstation.html#create-the-chef-repo-hidden-directory after you create your chef-repo, detailed below.
+
+h3. Your environment
+
+Grab your environment by cloning Chef's repo, which is a convenient pre-packaged directory tree with almost everything you need to get yourself going.
+
+{% highlight bash %}
+~ $ git clone git://github.com/opscode/chef-repo.git
+{% endhighlight %}
+
+Now that you have your Chef repository, let's take a look at it's directory structure.
+
+{% highlight bash %}
+~/chef-repo $ tree
+.
+|-- LICENSE
+|-- README.md
+|-- Rakefile
+|-- certificates/
+|-- config/
+|-- cookbooks/
+|-- data_bags/
+|-- environments/
+`-- roles/
+{% endhighlight %}
+
+This tree shall be the root of your work in your workstation. It gathers all the data you'll need to work on cookbooks and other items that will later be uploaded to your chef-server and used in your nodes. 
+
+You'll notice it's a git repository. Git is essential to proper configuration management, let's you rollback and experiment in a much easier way, and also, last but definitely not least, collaborate.
+
+You'll recognize most of the directories in the tree, with the possible exception of the _environments_ directory, which we don't really need right now. The config directory hosts some rake tasks to ease up some processes, and the certificates directory, well, it's where you may store your certificates.
+
+Now you should configure your Knife to use your chef-server. Detailed instructions are available "here":http://docs.opscode.com/install_workstation.html#create-the-chef-repo-hidden-directory. Don't worry, just breathe in, and you'll see that's pretty easy.
+
+Let's then see what we're deploying.
+
+h3. The application
+
+We'll be deploying a simple Rais application, that makes use of a database. This will give us the chance of using quite a few of Chef's built-in resources, including _template_, _git_, _command_ and _bash_, among others.
+
+The full list of requirements is the typical one for a rails application:
+* Ruby 1.9.1
+* Associated gems (rails, bundler, etc)
+* PostgreSQL
+* Nginx
+
+Also, remember that this is a production environment. Let's assume this server will only run this app, so we may install gems within the system's ruby. 
+
+h3. Creating the cookbook
+
+So let's tell knife to create use the cookbook structure.
+
+{% highlight bash %}
+~/chef-repo $ knife cookbook create rails-application
+{% endhighlight %}
+
+As per the default, the cookbook shall be created in the _cookbooks_ directory within the chef repository. Peeking into the directory structure of the newly created cookbook, we see the following.
+
+{% highlight bash %}
+~/chef-repo $ tree cookbooks/rails-application
+cookbooks/rails-application
+|-- CHANGELOG.md
+|-- README.md
+|-- attributes/
+|-- definitions/
+|-- files/
+|-- libraries/
+|-- metadata.rb
+|-- providers/
+|-- recipes/
+|-- resources/
+`-- templates/
+{% endhighlight %}
+
+Again, you should already be familiar with most of the directories presented to you. We'll only use a couple of them, now. We'll skip _definitions_, _libraries_, _providers_ and _resources_ until we discuss more advanced topics of Chef in depth.
+
+You'll notice there's already a recipe within the _recipes_ directory, _default.rb_. When a cookbook is ran without arguments, that's the recipe that's run. A common Chef practice is to split the cookbooks actions between recipes, the smaller the better, and then have the default recipe include them all. This is a good practice, and should be encouraged (both in here and when coding, by the way). However, to simplify things up, we'll only work on the default recipe.
+
+Also, for simplification purposes, it's natural if this recipe only works on Ubuntu. Making it work on other platforms is as simple as adding an if statement, or a switch case.
+
+h3. Installing all the software needed
+
+So let's start by telling chef to install all the needed software to run the app. We'll use the _package_ resource, that will install system packages using the default package manager.
+
+Open up the file at cookbooks/rails-application/recipes/default.rb and let's get cracking.
+
+{% highlight ruby linenos %}
+
+{% endhighlight %}
+

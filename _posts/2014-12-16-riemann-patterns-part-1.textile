@@ -1,0 +1,35 @@
+---
+layout: post
+title: "Riemann Patterns, part 1"
+summary: "Common patterns used in Riemann either to monitor or aggregate metrics"
+category: english
+tags: []
+published: true
+---
+
+Sup CLO-JURE!
+
+
+{% highlight clojure linenos %}
+(where (service #"call_quality_rated$")
+  (adjust #(assoc % :metric (read-string (:talkdesk.rating %)))
+  (pipe -
+    (with {:host "talkdesk" :state "ok"}
+      (where (metric -1)
+             (with {:service "talkdesk dropped_calls_hr"} -))
+      (where (metric 0)
+             (with {:service "talkdesk delayed_calls_hr"} -))
+      (where (metric 0 1 2)
+             (with {:service "talkdesk bad_calls_hr"} -))
+      (where (metric 3 4 5)
+             (with {:service "talkdesk good_calls_hr"} -)))
+    (by :service
+      (with {:metric 1 :ttl 3600}
+        (moving-time-window 3600
+          (smap riemann.folds/sum
+            (fill-in-last period {} reinject))))))
+  (by :metric
+    (with {:metric 1 :host "talkdesk" :state "ok"}
+      (adjust #(assoc % :service (str "talkdesk call_quality_rated_" (:metric %)))
+        indexate graph)))))
+{% endhighlight %}
